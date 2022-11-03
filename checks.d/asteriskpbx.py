@@ -169,8 +169,8 @@ class AsteriskCheck(AgentCheck):
         self.gauge('asterisk.calls.outbound',outboundCalls)
         self.gauge('asterisk.calls.conference',conferenceCalls)
 
-##### SIP Peers
-        sip_result = mgr.command('sip show peers')
+##### PJSIP Endpoints
+        sip_result = mgr.command('pjsip show endpoints')
 
         if "No such command" not in sip_result.data:
 
@@ -178,66 +178,16 @@ class AsteriskCheck(AgentCheck):
 
             siptotals = sip_results[len(sip_results)-3]
 
-            siptotal = re.findall(r'([0-9]+) sip peer',siptotals)[0]
+            siptotal = re.findall(r'Objects found: ([0-9]+)',siptotals)[0]
 
-            monitored_peers = re.findall(r'Monitored: ([0-9]+) online, ([0-9]+) offline',siptotals)[0]
-            unmonitored_peers = re.findall(r'Unmonitored: ([0-9]+) online, ([0-9]+) offline',siptotals)[0]
+            monitored_peers_online = siptotal.count(" Avail ")
+            monitored_peers_offline = siptotal.count(" UnAvail ")
+         
+            self.gauge('asterisk.pjsip.peers',siptotal)
+            self.gauge('asterisk.pjsip.monitored.online',monitored_peers_online)
+            self.gauge('asterisk.pjsip.monitored.offline',monitored_peers_offline)
 
-            self.gauge('asterisk.sip.peers',siptotal)
-            self.gauge('asterisk.sip.monitored.online',monitored_peers[0])
-            self.gauge('asterisk.sip.monitored.offline',monitored_peers[1])
-            self.gauge('asterisk.sip.unmonitored.online',unmonitored_peers[0])
-            self.gauge('asterisk.sip.unmonitored.offline',unmonitored_peers[1])
 
-##### SIP Trunks (You have to add '-trunk' string into your SIP trunk name to detect it as a Trunk)
-        sip_total_trunks = 0
-        sip_online_trunks = 0
-        sip_offline_trunks = 0
-
-        sip_trunks = instance['sip_trunks']
-
-        for chan in sip_results:
-            if chan != None:
-                chan_data = chan.split()
-                if len(chan_data) > 1:
-                    for item in sip_trunks:
-                        if item["name"] in chan_data[0]:
-                            sip_total_trunks += 1
-                            if len(chan_data) > 2 and "OK" in chan_data[5]:
-                                sip_online_trunks += 1
-                            if len(chan_data) > 2 and chan_data[5] == "UNREACHABLE":
-                                sip_offline_trunks += 1
-      
-        self.gauge('asterisk.sip.trunks.total',sip_total_trunks)
-        self.gauge('asterisk.sip.trunks.online',sip_online_trunks)
-        self.gauge('asterisk.sip.trunks.offline',sip_offline_trunks)
-
-#SIP Trunks Use
-        sip_trunks_data = {}
-        i = 0
-        for sip_trunk in sip_trunks:
-            sip_trunks_data [i] = {"name":sip_trunk["name"],"type":sip_trunk["type"],"total_channels":sip_trunk["total_channels"],"channels_in_use":0}
-            i = i +1
-
-        for currentChannel in currentChannelsArray:
-            for sip_trunk_index in sip_trunks_data:
-                sip_trunk_name = sip_trunks_data[sip_trunk_index]['name'][:16]
-                sip_trunk_name = sip_trunk_name.strip()
-                if sip_trunk_name in currentChannel.Channel:
-                    channels_in_use = sip_trunks_data[sip_trunk_index]['channels_in_use'] + 1
-                    new_data = {sip_trunk_index:{"name":sip_trunks_data[sip_trunk_index]["name"],"type":sip_trunks_data[sip_trunk_index]["type"],"total_channels":sip_trunk["total_channels"],"channels_in_use":channels_in_use}}
-                    sip_trunks_data.update(new_data)
-
-        for sip_trunk_index in sip_trunks_data:
-            name = sip_trunks_data[sip_trunk_index]['name']
-            type = sip_trunks_data[sip_trunk_index]['type']
-            total_channels = sip_trunks_data[sip_trunk_index]['total_channels']
-            channels_in_use = sip_trunks_data[sip_trunk_index]['channels_in_use']
-            available = total_channels - channels_in_use
-
-            self.gauge('asterisk.sip.trunks.'+ name +'.'+type+'.channels.total',total_channels)
-            self.gauge('asterisk.sip.trunks.'+ name +'.'+type+'.channels.inUse',channels_in_use)
-            self.gauge('asterisk.sip.trunks.'+ name +'.'+type+'.channels.available',available)
 
 ##### PRI In Use
 
