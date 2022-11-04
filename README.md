@@ -3,15 +3,17 @@ Asterisk PBX Integration for Datadog
 
 Datadog Agent plugin for the Open Source Asterisk PBX based on the work of jwestbrook (https://github.com/jwestbrook/datadog-asteriskpbx).
 
+This version has been updated to support DataDog agent v7 as well as being updated to support looking at PJSIP channels and endpoints rather than using the legacy SIP endpoints.  It is not as complete as the original module, but meets the requirements for the monitoring I needed to implement.  Patches welcome.
+
+
 Prerequisites
 -----------
-- Datadog Agent v5 (1.5) or v6 (6.3.1)
-- pyst Library
-- PyYaml (for test)
+- Datadog Agent v6 (6.3.1)
+- pyst Library patched to support Asterisk > 14 [link to patch](https://github.com/jfernandz/pyst2/pull/47/commits/a74c3a66bd30c8ed45b5d1a9cd20da07305002e4)
+
 
 Installation (Datadog Agent v6)
 -----------
-For Installation on Datadog Agent v5 [read this document](https://github.com/mafairnet/Asterisk-PBX-Integration-for-Datadog/blob/master/README_v5.md)
 
 Install the Asterisk Manager Python library for datadog.
 
@@ -19,13 +21,14 @@ Install the Asterisk Manager Python library for datadog.
 /opt/datadog-agent/embedded/bin/pip install pyst2
 ```
 
+Patch /opt/datadog-agent/embedded/lib/python3.8/site-packages/asterisk/manager.py with the one line change from the patch above to handle the updated format of responses Asterisk 14 returns.
+
 Get the module files for the datadog agent.
 
 ```
 cd /usr/src/
-wget https://github.com/mafairnet/datadog-asteriskpbx/archive/master.zip
-unzip master.zip
-cd Asterisk-PBX-Integration-for-Datadog-master/
+git clone https://github.com/matthewmgamble/datadog-asteriskpbx.git
+cd datadog-asteriskpbx/
 ```
 
 Copy the module files to the datadog directories.
@@ -79,14 +82,4 @@ Important notes
 -----------
 **SIP Trunks Metrics**
 
-It is highly recommended that you use '-trunk' string as posfix into your SIP trunk name to detect it as a Trunk so the script can detect the SIP Trunks. You can verify this when executing the next command in the console:
-
-```
-[user@yourpbx]# asterisk -rx 'sip show peers' | grep "\-trunk"
-SIP1-trunk          192.168.1.10                                  Yes        Yes            5060     OK (1 ms)
-SIP2-trunk/SIP2     192.168.1.11                                  Yes        Yes            5060     OK (1 ms)
-```
-
-But in the lastest changes SIP Trunks monitoring was improved:
--You dont need to put "-trunk" posfix to detect SIP Trunks. Just add them in the YAML config file. 
--SIP Trunks Channels Usage added, just add the total capacity of your SIP Trunk for channels.
+This version only supports PJSIP endpoints, not the clasic Asterisk SIP endpoints.  If you need support for chan_sip please look at the original module this was forked from.
